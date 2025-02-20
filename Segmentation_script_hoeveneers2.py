@@ -136,8 +136,11 @@ def save_all_intensities_to_csv(data, output_csv):
             writer.writerow(row)
 
 # Directory containing image stacks
-input_folder = "/Volumes/sils-mc/13776452/Python_scripts/Script_hoeveneers/Data_input_hoeveneers"  # Replace with your folder path
-output_csv = "/Volumes/sils-mc/13776452/Python_scripts/Script_hoeveneers/Data_output_hoeveneers/all_intensities.csv"  # Replace with your desired output CSV file path
+if len(sys.argv) > 2:
+    input_folder = sys.argv[1]  # First argument is input folder
+    output_folder = sys.argv[2]  # Second argument is output folder
+else:
+    raise ValueError("Usage: python your_script.py <input_folder> <output_folder>")
 
 all_data = []
 
