@@ -20,6 +20,10 @@ p <- ggplot(data, aes(x = Condition, y = Nucleus.Cytoplasm.Ratio, fill = Conditi
   theme(legend.position = "none") +
   scale_fill_brewer(palette = "Set2")
 
-# Save the plot as a PNG
-ggsave(output_plot, plot = p, width = 8, height = 6, dpi = 300)
-print("Plot saved successfully!")
+# Force the plot to fully render before saving
+print(p)  # Print the plot first
+dev.off()  # Close any open graphic device
+
+# Now save the plot
+ggsave(output_plot, plot = p, width = 10, height = 6, dpi = 300)
+
