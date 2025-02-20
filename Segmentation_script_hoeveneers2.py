@@ -74,7 +74,7 @@ def visualize_nucleus_with_ids(image, mask, filename):
     plt.close()  # Close the figure after saving
 
 # Function to visualize cytoplasmic ring overlayed on the cyan channel image
-def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring,vmin=0, vmax=255, filename):
+def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring,filename, vmin=0, vmax=255):
     plt.figure(figsize=(12, 6))
     plt.title("Cytoplasmic Ring Overlay on Cyan Channel")
     plt.imshow(cyan_channel, cmap="gray",vmin=vmin, vmax=vmax)  
