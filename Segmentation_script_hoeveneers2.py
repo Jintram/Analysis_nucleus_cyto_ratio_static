@@ -27,7 +27,7 @@ if not os.path.exists('/content/drive'):
 plt.ion
 
 # Function to visualize nucleus segmentation
-def visualize_nucleus_segmentation(image, mask, image_name):
+def visualize_nucleus_segmentation(image, mask, filename):
     plt.figure(figsize=(12, 6))
     plt.subplot(1, 2, 1)
     plt.title("Original Image")
@@ -37,11 +37,11 @@ def visualize_nucleus_segmentation(image, mask, image_name):
     plt.title("Segmented Nucleus")
     plt.imshow(mask, cmap="gray")
     plt.axis("off")
-    plt.savefig(os.path.join(output_folder, f"{image_name}_Nucleus_segmentation.png"))
+    plt.savefig(os.path.join(output_folder, f"{filename}_Nucleus_segmentation.png"))
     plt.close()  # Close the figure after saving
 
 # Function to visualize cytoplasmic ring creation
-def visualize_cytoplasmic_ring(image, cytoplasmic_ring, image_name):
+def visualize_cytoplasmic_ring(image, cytoplasmic_ring, filename):
     plt.figure(figsize=(12, 6))
     plt.subplot(1, 2, 1)
     plt.title("Original Image")
@@ -51,11 +51,11 @@ def visualize_cytoplasmic_ring(image, cytoplasmic_ring, image_name):
     plt.title("Cytoplasmic Ring")
     plt.imshow(cytoplasmic_ring, cmap="gray")
     plt.axis("off")
-    plt.savefig(os.path.join(output_folder, f"{image_name}_Cytoplasmic_ring.png"))
+    plt.savefig(os.path.join(output_folder, f"{filename}_Cytoplasmic_ring.png"))
     plt.close()  # Close the figure after saving
 
 # Function to visualize nucleus segmentation with masks and cell IDs
-def visualize_nucleus_with_ids(image, mask, image_name):
+def visualize_nucleus_with_ids(image, mask, filename):
     labeled_mask = label(mask)
     overlay = label2rgb(labeled_mask, image=image, bg_label=0)
 
@@ -70,17 +70,17 @@ def visualize_nucleus_with_ids(image, mask, image_name):
         plt.text(x, y, str(prop.label), color='red', fontsize=12, ha='center', va='center')
 
     plt.axis("off")
-    plt.savefig(os.path.join(output_folder, f"{image_name}_Cell_IDs.png"))
+    plt.savefig(os.path.join(output_folder, f"{filename}_Cell_IDs.png"))
     plt.close()  # Close the figure after saving
 
 # Function to visualize cytoplasmic ring overlayed on the cyan channel image
-def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring,vmin=0, vmax=255, image_name):
+def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring,vmin=0, vmax=255, filename):
     plt.figure(figsize=(12, 6))
     plt.title("Cytoplasmic Ring Overlay on Cyan Channel")
     plt.imshow(cyan_channel, cmap="gray",vmin=vmin, vmax=vmax)  
     plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), cmap="gray", alpha=0.7)  # Overlay with white rings
     plt.axis("off")
-    plt.savefig(os.path.join(output_folder, f"{image_name}_Cytoplasmic_overlay.png"))
+    plt.savefig(os.path.join(output_folder, f"{filename}_Cytoplasmic_overlay.png"))
     plt.close()  # Close the figure after saving
 
 # Function to subtract mode background from an image
@@ -187,16 +187,16 @@ for file_path in os.listdir(input_folder):
         cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus=5)
 
         # Visualize nucleus segmentation and cytoplasmic ring
-        # visualize_nucleus_segmentation(nucleus_channel_filtered, nucleus_mask)
-        # visualize_cytoplasmic_ring(nucleus_channel_filtered, cytoplasm_roi)
+        # visualize_nucleus_segmentation(nucleus_channel_filtered, nucleus_mask,image_name)
+        # visualize_cytoplasmic_ring(nucleus_channel_filtered, cytoplasm_roi,image_name)
 
 
    
         # Visualize with cell IDs for choosing interesting cells
-        visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask)
+        visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name)
         
         # Visualize cytoplasmic ring overlay on cyan channel image
-        visualize_cytoplasmic_ring_overlay(cyan_channel_bg_subtracted, cytoplasm_roi)
+        visualize_cytoplasmic_ring_overlay(cyan_channel_bg_subtracted, cytoplasm_roi, image_name)
 
         # Measure intensities for each cell in the nucleus and cytoplasm
         nucleus_intensities = measure_intensity_per_cell(cyan_channel_bg_subtracted, nucleus_mask)
