@@ -134,7 +134,7 @@ def measure_intensity_per_cell(image, mask):
     return intensities
 
 # Function to save all intensities and ratios to a single CSV file
-def save_all_intensities_to_csv(data, output_csv):
+def save_all_intensities_to_csv(data, output_folder):
     with open(output_csv, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Filename+CellID", "Condition", "Nucleus/Cytoplasm Ratio", "Nucleus Intensity", "Cytoplasmic Intensity"])
@@ -201,5 +201,5 @@ for file_path in os.listdir(input_folder):
             all_data.append([file_path + f"_{cell_id}", condition, ratio, nucleus_intensity, cytoplasm_intensity])
 
 # Save all combined data to a single CSV file
-save_all_intensities_to_csv(all_data, output_csv)
-print(f"All results saved to {output_csv}")
+save_all_intensities_to_csv(all_data, output_folder)
+print(f"All results saved to {output_folder}")
