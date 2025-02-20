@@ -6,8 +6,10 @@ library(readr)
 csv_file <- "/content/drive/My Drive/Output_data/intensity_results.csv"
 data <- read.csv(csv_file)
 
+output_plot <- "/content/drive/My Drive/Output_data/plot.png"  # Save plot here
+
 # Create the combined violin and boxplot
-ggplot(data, aes(x = Condition, y = Nucleus.Cytoplasm.Ratio, fill = Condition)) +
+p <- ggplot(data, aes(x = Condition, y = Nucleus.Cytoplasm.Ratio, fill = Condition)) +
   geom_violin(trim = FALSE, alpha = 0.5) +
   geom_boxplot(width = 0.1, outlier.shape = NA, color = "black") +
   geom_jitter(shape = 16, position = position_jitter(0.2), size = 2, alpha = 0.7) +
@@ -18,3 +20,6 @@ ggplot(data, aes(x = Condition, y = Nucleus.Cytoplasm.Ratio, fill = Condition)) 
   theme(legend.position = "none") +
   scale_fill_brewer(palette = "Set2")
 
+# Save the plot as a PNG
+ggsave(output_plot, plot = p, width = 8, height = 6, dpi = 300)
+print("Plot saved successfully!")
