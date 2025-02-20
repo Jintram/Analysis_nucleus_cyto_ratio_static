@@ -18,10 +18,13 @@ from skimage.morphology import disk
 import sys
 import os
 import cv2  # If using OpenCV
+from google.colab import drive
 
+# Mount Google Drive if not already mounted
+if not os.path.exists('/content/drive'):
+    drive.mount('/content/drive')
 # Enable interactive mode
 plt.ion
-
 
 # Function to visualize nucleus segmentation
 def visualize_nucleus_segmentation(image, mask):
