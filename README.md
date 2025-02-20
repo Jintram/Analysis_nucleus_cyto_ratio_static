@@ -1,0 +1,1 @@
+# Static_image_segmentation
