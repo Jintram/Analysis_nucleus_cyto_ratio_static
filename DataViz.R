@@ -1,8 +1,10 @@
 # Load necessary libraries
 library(ggplot2)
+library(readr)
 
 # Read the CSV file into a data frame
-data <- read.csv("/Volumes/sils-mc/13776452/Python_scripts/Script_hoeveneers/Data_output_hoeveneers/all_intensities.csv")
+csv_file <- "/content/drive/My Drive/Output_data/intensity_results.csv"
+data <- read.csv(csv_file)
 
 # Create the combined violin and boxplot
 ggplot(data, aes(x = Condition, y = Nucleus.Cytoplasm.Ratio, fill = Condition)) +
