@@ -37,8 +37,8 @@ def visualize_nucleus_segmentation(image, mask):
     plt.title("Segmented Nucleus")
     plt.imshow(mask, cmap="gray")
     plt.axis("off")
-    plt.show(block=False)
-    plt.waitforbuttonpress()
+    plt.savefig(os.path.join(output_folder, "Nucleus_segmentation.png"))
+    plt.close()  # Close the figure after saving
 
 # Function to visualize cytoplasmic ring creation
 def visualize_cytoplasmic_ring(image, cytoplasmic_ring):
@@ -51,8 +51,8 @@ def visualize_cytoplasmic_ring(image, cytoplasmic_ring):
     plt.title("Cytoplasmic Ring")
     plt.imshow(cytoplasmic_ring, cmap="gray")
     plt.axis("off")
-    plt.show(block=False)
-    plt.waitforbuttonpress()
+    plt.savefig(os.path.join(output_folder, "Cytoplasmic_ring.png"))
+    plt.close()  # Close the figure after saving
 
 # Function to visualize nucleus segmentation with masks and cell IDs
 def visualize_nucleus_with_ids(image, mask):
@@ -70,8 +70,8 @@ def visualize_nucleus_with_ids(image, mask):
         plt.text(x, y, str(prop.label), color='red', fontsize=12, ha='center', va='center')
 
     plt.axis("off")
-    plt.show(block=False)
-    plt.waitforbuttonpress()
+    plt.savefig(os.path.join(output_folder, "CellID.png"))
+    plt.close()  # Close the figure after saving
 
 # Function to visualize cytoplasmic ring overlayed on the cyan channel image
 def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring,vmin=0, vmax=255):
@@ -80,8 +80,8 @@ def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring,vmin=0, vm
     plt.imshow(cyan_channel, cmap="gray",vmin=vmin, vmax=vmax)  
     plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), cmap="gray", alpha=0.7)  # Overlay with white rings
     plt.axis("off")
-    plt.show(block=False)
-    plt.waitforbuttonpress()
+    plt.savefig(os.path.join(output_folder, "Cytoplasmic_ring_overlay.png"))
+    plt.close()  # Close the figure after saving
 
 # Function to subtract mode background from an image
 def subtract_mode_background(image):
