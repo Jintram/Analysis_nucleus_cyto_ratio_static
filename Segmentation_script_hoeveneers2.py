@@ -15,6 +15,9 @@ import re  # Import regular expressions module
 from scipy import stats
 from skimage.filters import median
 from skimage.morphology import disk
+import sys
+import os
+import cv2  # If using OpenCV
 
 # Enable interactive mode
 plt.ion
