@@ -21,5 +21,5 @@ p <- ggplot(data, aes(x = Condition, y = Nucleus.Cytoplasm.Ratio, fill = Conditi
   scale_fill_brewer(palette = "Set2")
 
 # Save the plot as a PNG
-ggsave(output_plot, plot = p, width = 4, height = 3, dpi = 300)
+ggsave(output_plot, plot = p, width = 8, height = 6, dpi = 300)
 print("Plot saved successfully!")
