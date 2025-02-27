@@ -74,34 +74,30 @@ def visualize_nucleus_with_ids(image, mask, filename):
     plt.close()  # Close the figure after saving
 
 # Function to visualize cytoplasmic ring overlayed on the cyan channel image
-def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring,filename, vmin=0, vmax=255):
+def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring):
+    # Calculate dynamic range from the cyan channel
+    vmin, vmax = np.percentile(cyan_channel[cyan_channel > 0], (1, 99))
+    
     plt.figure(figsize=(12, 6))
     plt.title("Cytoplasmic Ring Overlay on Cyan Channel")
-    plt.imshow(cyan_channel, cmap="gray",vmin=vmin, vmax=vmax)  
-    plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), cmap="gray", alpha=0.7)  # Overlay with white rings
+    # Display cyan channel with dynamic range
+    plt.imshow(cyan_channel, cmap="gray", vmin=vmin, vmax=vmax)
+    # Overlay cytoplasmic ring
+    plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
+              cmap="gray", alpha=0.7)
     plt.axis("off")
     plt.savefig(os.path.join(output_folder, f"{filename}_Cytoplasmic_overlay.png"))
     plt.close()  # Close the figure after saving
-
+    
 # Function to subtract mode background from an image
 def subtract_mode_background(image):
-    # Flatten image to 1D for mode calculation
     flat_image = image.flatten()
-
-    # Convert to integer if needed
     if not np.issubdtype(flat_image.dtype, np.integer):
-        flat_image = flat_image.astype(int)
-
-    # Compute mode using bincount
-    mode_value = np.bincount(flat_image).argmax()
-
-    # Subtract mode value
-    background_subtracted_image = image.astype(np.int16) - mode_value  # Use int16 to prevent underflow
-
-    # Ensure valid pixel range without clipping to white
-    background_subtracted_image[background_subtracted_image < 0] = 0  # Set negative values to 0
-
-    return background_subtracted_image.astype(np.uint8)
+        flat_image = flat_image.astype(np.uint16)  # Convert to 16-bit if not integer
+    mode_value = stats.mode(flat_image, keepdims=True)[0][0]  # More robust mode calculation
+    background_subtracted_image = image.astype(np.int32) - mode_value
+    background_subtracted_image[background_subtracted_image < 0] = 0
+    return background_subtracted_image.astype(np.uint16)
 
 # Function to apply median filter to an image
 def apply_median_filter(image, radius=2):
@@ -120,7 +116,7 @@ def segment_nucleus(image):
     return opened_mask
 
 # Function to create cytoplasm ROI
-def create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus=5):
+def create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus=2):
     expanded_nucleus_mask = binary_dilation(nucleus_mask, footprint=disk(distance_from_nucleus))
     dilated_mask = binary_dilation(expanded_nucleus_mask, footprint=disk(dilation_radius))
     cytoplasm_ring = dilated_mask ^ expanded_nucleus_mask
@@ -130,7 +126,20 @@ def create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus
 def measure_intensity_per_cell(image, mask):
     labeled_mask = label(mask)
     properties = regionprops(labeled_mask, intensity_image=image)
-    intensities = [prop.mean_intensity for prop in properties]
+    # Calculate statistics for the whole image to get context
+    img_percentile = np.percentile(image[image > 0], 99)
+    
+    intensities = []
+    for prop in properties:
+        # Only include pixels that are within reasonable range
+        region_pixels = image[prop.coords[:, 0], prop.coords[:, 1]]
+        valid_pixels = region_pixels[region_pixels <= img_percentile]
+        if len(valid_pixels) > 0:
+            mean_intensity = np.mean(valid_pixels)
+            intensities.append(mean_intensity)
+        else:
+            intensities.append(0)
+    
     return intensities
 
 # Function to save all intensities and ratios to a single CSV file
@@ -184,7 +193,7 @@ for file_path in os.listdir(input_folder):
 
         # Segment the nucleus and create cytoplasmic ROI
         nucleus_mask = segment_nucleus(nucleus_channel_filtered)
-        cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus=5)
+        cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus=2)
 
         # Visualize nucleus segmentation and cytoplasmic ring
         # visualize_nucleus_segmentation(nucleus_channel_filtered, nucleus_mask,image_name)
