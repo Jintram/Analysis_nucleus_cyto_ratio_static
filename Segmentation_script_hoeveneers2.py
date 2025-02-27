@@ -74,7 +74,7 @@ def visualize_nucleus_with_ids(image, mask, filename):
     plt.close()  # Close the figure after saving
 
 # Function to visualize cytoplasmic ring overlayed on the cyan channel image
-def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring):
+def visualize_cytoplasmic_ring_overlay(cyan_channel, cytoplasmic_ring,filename):
     # Calculate dynamic range from the cyan channel
     vmin, vmax = np.percentile(cyan_channel[cyan_channel > 0], (1, 99))
     
