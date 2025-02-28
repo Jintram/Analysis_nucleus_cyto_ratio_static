@@ -21,7 +21,7 @@ upper_bound <- Q3 + 1.5 * IQR_value
 filtered_data <- subset(data, Nucleus.Cytoplasm.Ratio >= lower_bound & Nucleus.Cytoplasm.Ratio <= upper_bound)
 
 # Create the combined violin and boxplot
-ggplot(filtered_data, aes(x = Condition, y = Nucleus.Cytoplasm.Ratio, fill = Condition)) +
+p <- ggplot(filtered_data, aes(x = Condition, y = Nucleus.Cytoplasm.Ratio, fill = Condition)) +
   geom_violin(trim = FALSE, alpha = 0.5) +
   geom_boxplot(width = 0.1, outlier.shape = NA, color = "black") +
   geom_jitter(shape = 16, position = position_jitter(0.2), size = 2, alpha = 0.7) +
