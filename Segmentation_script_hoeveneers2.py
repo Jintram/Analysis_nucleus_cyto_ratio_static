@@ -205,7 +205,7 @@ for file_path in os.listdir(input_folder):
         visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name)
         
         # Visualize cytoplasmic ring overlay on cyan channel image
-        visualize_cytoplasmic_ring_overlay(cyan_channel_bg_subtracted, cytoplasm_roi,filename)
+        visualize_cytoplasmic_ring_overlay(cyan_channel_bg_subtracted, cytoplasm_roi,image_name)
 
         # Measure intensities for each cell in the nucleus and cytoplasm
         nucleus_intensities = measure_intensity_per_cell(cyan_channel_bg_subtracted, nucleus_mask)
