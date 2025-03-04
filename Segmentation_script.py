@@ -40,6 +40,7 @@ from skimage.color import label2rgb
 from skimage.filters import median
 from skimage.morphology import disk
 import sys
+from scipy import stats
 from google.colab import drive
 
 ######################################################################
