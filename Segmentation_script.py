@@ -153,13 +153,13 @@ def apply_median_filter(image, radius=2):
 
 # Function to segment nucleus
 def segment_nucleus(image):
-     '''
+    '''
     Segmenting the nucleus is done by determining a threshold value based
     on Otsu's method.
     The mask, which might contain some artifacts, is then "cleaned up" by
     performing some morphological operations, ie removing small objects and holes,
     and performing binary opening (also smoothens edges). 
-    '''
+    ''' 
     #Determine mask
     thresh = threshold_otsu(image)
     binary_mask = image > thresh
