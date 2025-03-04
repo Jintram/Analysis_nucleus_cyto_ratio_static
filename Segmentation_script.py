@@ -31,7 +31,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tifffile as tiff
 import re  # Import regular expressions module
-from PIL import Image
 
 from skimage.filters import threshold_otsu
 from skimage.morphology import remove_small_objects, remove_small_holes, binary_opening, disk, binary_dilation
