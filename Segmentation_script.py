@@ -163,12 +163,12 @@ def segment_nucleus(image):
     #Determine mask
     thresh = threshold_otsu(image)
     binary_mask = image > thresh
-
+    
     #Clean up mask
     clean_mask = remove_small_objects(binary_mask, min_size=200)
     clean_mask = remove_small_holes(clean_mask, area_threshold=10)
     opened_mask = binary_opening(clean_mask, footprint=disk(2))
-    
+            
     return opened_mask
 
 # Function to create cytoplasm ROI
@@ -197,10 +197,10 @@ def measure_intensity_per_cell(image, mask):
     #Determine properties (labeled areas should be the cells)
     labeled_mask = label(mask)
     properties = regionprops(labeled_mask, intensity_image=image)
-
+    
     # Extract intensities for each cell
     intensities = [prop.mean_intensity for prop in properties]
-    
+     
     return intensities
 
 # Function to save all intensities and ratios to a single CSV file
@@ -215,7 +215,7 @@ def save_all_intensities_to_csv(data, output_folder):
     # Ensure output folder exists
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)  # Create if it doesn't exist
-
+    
     # Define a filename inside the output folder
     csv_filename = os.path.join(output_folder, "intensity_results.csv")
     
@@ -248,36 +248,36 @@ all_data = []
 for file_path in os.listdir(input_folder):
     
     if file_path.endswith(".tif"):  # Adjust file extension if needed
-
+        
         #Read image stack
         image_stack = tiff.imread(os.path.join(input_folder, file_path))
         print(f"Processing file: {file_path}")
-
+        
         ### Image processing
         
         image_name = os.path.splitext(file_path)[0]
         # Extract the condition from the filename
         condition = extract_condition(file_path)
-
+        
         # Put the nucleus and data channels in two seperate variables
         nucleus_channel = (image_stack[0])  # Assuming the first image is the nucleus channel
         data_channel = (image_stack[1])  # Assuming the second image is the data channel
-
+        
         # Apply median filter to the nucleus channel, increase radius to increase smoothing
         nucleus_channel_filtered = apply_median_filter(nucleus_channel, radius=2)
-
+        
         # Subtract mode background from the data channel
         data_channel_bg_subtracted = subtract_mode_background(data_channel)
-
+        
         # Segment the nucleus and create cytoplasmic ROI
         nucleus_mask = segment_nucleus(nucleus_channel_filtered)
         cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus=2)
-
+        
         #Optional visualization
         # Visualize nucleus segmentation and cytoplasmic ring
         # visualize_nucleus_segmentation(nucleus_channel_filtered, nucleus_mask,image_name)
         # visualize_cytoplasmic_ring(nucleus_channel_filtered, cytoplasm_roi,image_name)
-
+        
         ### Plotting
         
         # Visualize with cell IDs for choosing interesting cells
@@ -285,13 +285,13 @@ for file_path in os.listdir(input_folder):
         
         # Visualize cytoplasmic ring overlay on data channel image
         visualize_cytoplasmic_ring_overlay(data_channel_bg_subtracted, cytoplasm_roi,image_name)
-
+        
         ### Determine mean intensities for each cytoplasmic and nuclear region
-
+        
         # Measure intensities for each cell in the nucleus and cytoplasm
         nucleus_intensities = measure_intensity_per_cell(data_channel_bg_subtracted, nucleus_mask)
         cytoplasm_intensities = measure_intensity_per_cell(data_channel_bg_subtracted, cytoplasm_roi)
-
+        
         ### Create output data structure
         # all_data is a list of lists, where the outer lists corresponds to the cells,
         # and the inner lists contains multiple entries with properties and information.
