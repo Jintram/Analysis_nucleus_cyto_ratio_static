@@ -1,3 +1,6 @@
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JuliandeSwart/Static_image_segmentation/blob/main/User_friendly_Colab_interface.ipynb)
+
+
 # Static_image_segmentation
 
 **Overview**
