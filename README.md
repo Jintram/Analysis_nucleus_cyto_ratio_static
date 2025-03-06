@@ -20,6 +20,8 @@ Non coder friendly interface (Google Colab)
 
 Google drive compatible
 
+Distinguishes WT and RQ by detecting -WT- & -RQ_ in your input data filename.
+
 
 **Running the scripts**
 
