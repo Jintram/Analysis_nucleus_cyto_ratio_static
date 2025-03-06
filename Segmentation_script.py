@@ -172,7 +172,7 @@ def segment_nucleus(image):
     return opened_mask
 
 # Function to create cytoplasm ROI
-def create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus=2):
+def create_cytoplasm_roi(nucleus_mask, dilation_radius=5, distance_from_nucleus=2):
     '''
     Starting from the nuclei, the cytoplasmic ring is created by expanind that mask 
     twice, once to create a large area around the nucleus, and another time to create 
