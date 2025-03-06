@@ -271,7 +271,7 @@ for file_path in os.listdir(input_folder):
         
         # Segment the nucleus and create cytoplasmic ROI
         nucleus_mask = segment_nucleus(nucleus_channel_filtered)
-        cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=10, distance_from_nucleus=2)
+        cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=5, distance_from_nucleus=2)
         
         #Optional visualization
         # Visualize nucleus segmentation and cytoplasmic ring
@@ -298,7 +298,7 @@ for file_path in os.listdir(input_folder):
         # all_data contains data from multiple image stacks.
         
         # Combine data for each cell
-        for cell_id, (nucleus_intensity, cytoplasm_intensity) in enumerate(zip(nucleus_intensities, cytoplasm_intensities)):
+        for cell_id, (nucleus_intensity, cytoplasm_intensity) in enumerate(zip(nucleus_intensities, cytoplasm_intensities), start=1):
             ratio = nucleus_intensity / cytoplasm_intensity if cytoplasm_intensity != 0 else np.nan
             all_data.append([file_path + f"_{cell_id}", condition, ratio, nucleus_intensity, cytoplasm_intensity])
 
