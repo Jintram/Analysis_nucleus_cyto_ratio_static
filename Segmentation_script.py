@@ -24,6 +24,7 @@
 
 ######################################################################
 # Load libraries
+
 import os
 import csv
 
@@ -33,19 +34,29 @@ import tifffile as tiff
 import re  # Import regular expressions module
 
 from skimage.filters import threshold_otsu
-from skimage.morphology import remove_small_objects, remove_small_holes, binary_opening, disk, binary_dilation
+from skimage.morphology import remove_small_objects, remove_small_holes, binary_opening, disk, dilation, binary_dilation
 from skimage.measure import label, regionprops
 from skimage.color import label2rgb
 from skimage.filters import median
-from skimage.morphology import disk
+
 import sys
 from scipy import stats
-from google.colab import drive
+
+try:
+    from google.colab import drive
+    print('Running in Google Colab')
+    running_in_colab = True
+except:
+    print('Not running in Google Colab')
+    running_in_colab = False
+
 
 ######################################################################
+
 # Mount Google Drive if not already mounted
-if not os.path.exists('/content/drive'):
-    drive.mount('/content/drive')
+if running_in_colab:
+    if not os.path.exists('/content/drive'):
+        drive.mount('/content/drive')
     
 # Enable interactive mode for plotting
 plt.ion
@@ -79,8 +90,8 @@ def visualize_cytoplasmic_ring(image, cytoplasmic_ring, filename):
     plt.close()  # Close the figure after saving
 
 # Function to visualize nucleus segmentation with masks and cell IDs
-def visualize_nucleus_with_ids(image, mask, filename):
-    labeled_mask = label(mask)
+def visualize_nucleus_with_ids(image, labeled_mask, filename):
+
     overlay = label2rgb(labeled_mask, image=image, bg_label=0)
 
     plt.figure(figsize=(12, 6))
@@ -98,7 +109,10 @@ def visualize_nucleus_with_ids(image, mask, filename):
     plt.close()  # Close the figure after saving
 
 # Function to visualize cytoplasmic ring overlayed on the data channel image
-def visualize_cytoplasmic_ring_overlay(data_channel, cytoplasmic_ring,filename):
+def visualize_cytoplasmic_ring_overlay(data_channel, cytoplasmic_ring_labeled, filename):
+    
+    cytoplasmic_ring = cytoplasmic_ring_labeled>0
+    
     # Calculate dynamic range from the data channel
     vmin, vmax = np.percentile(data_channel[data_channel > 0], (1, 99))
     
@@ -152,7 +166,7 @@ def apply_median_filter(image, radius=2):
     return filtered_image
 
 # Function to segment nucleus
-def segment_nucleus(image):
+def segment_nucleus(image, min_size=200):
     '''
     Segmenting the nucleus is done by determining a threshold value based
     on Otsu's method.
@@ -160,17 +174,40 @@ def segment_nucleus(image):
     performing some morphological operations, ie removing small objects and holes,
     and performing binary opening (also smoothens edges). 
     ''' 
-    #Determine mask
+    # image = nucleus_channel_filtered; min_size=200
+    
+    # Determine mask
     thresh = threshold_otsu(image)
     binary_mask = image > thresh
+        # plt.imshow(binary_mask); plt.show(); plt.close()
     
-    #Clean up mask
-    clean_mask = remove_small_objects(binary_mask, min_size=200)
+    # Clean up mask
+    clean_mask = remove_small_objects(binary_mask, min_size=min_size)
     clean_mask = remove_small_holes(clean_mask, area_threshold=10)
     opened_mask = binary_opening(clean_mask, footprint=disk(2))
+    
+    # Create labeled mask
+    labeled_mask = label(opened_mask)
             
-    return opened_mask
+    return labeled_mask
 
+def create_test_mask():
+    '''
+    For debugging purposes.
+    '''
+    
+    nucleus_mask = np.array(
+        [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,1,1,2,2,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,1,1,2,2,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
+    
 # Function to create cytoplasm ROI
 def create_cytoplasm_roi(nucleus_mask, dilation_radius=5, distance_from_nucleus=2):
     '''
@@ -179,23 +216,26 @@ def create_cytoplasm_roi(nucleus_mask, dilation_radius=5, distance_from_nucleus=
     and exclusion zone that includes the nucleus and an area around it. By ~subtracting
     the latter from the large area, the cytoplasmic ring is obtained.
     '''
+    # dilation_radius=5; distance_from_nucleus=2
+    
     #Create the two dilated masks
-    expanded_nucleus_mask = binary_dilation(nucleus_mask, footprint=disk(distance_from_nucleus))
-    dilated_mask = binary_dilation(expanded_nucleus_mask, footprint=disk(dilation_radius))
+    expanded_nucleus_mask = dilation(nucleus_mask, footprint=disk(distance_from_nucleus))
+    cytoplasm_ring = dilation(expanded_nucleus_mask, footprint=disk(dilation_radius))
+        # _,ax=plt.subplots(1, 2); ax[0].imshow(expanded_nucleus_mask); ax[1].imshow(dilated_mask); plt.show(); plt.close()
     
     #Determine the ring
-    cytoplasm_ring = dilated_mask ^ expanded_nucleus_mask
+    cytoplasm_ring[expanded_nucleus_mask>0] = 0
+        # plt.imshow(cytoplasm_ring); plt.show(); plt.close()
     
     return cytoplasm_ring
 
 # Function to measure intensity for each labeled cell
-def measure_intensity_per_cell(image, mask):
+def measure_intensity_per_cell(image, labeled_mask):
     '''
     Determine labeled mask and properties relating to the mask and 
     the intensity image.
     '''
     #Determine properties (labeled areas should be the cells)
-    labeled_mask = label(mask)
     properties = regionprops(labeled_mask, intensity_image=image)
     
     # Extract intensities for each cell
@@ -233,7 +273,12 @@ def extract_condition(filename):
     
     match = re.search(r'-(WT)-|-(RQ)_', filename)
     return match.group(1) or match.group(2) if match else "Unknown"
+
+
 ######################################################################
+
+# Some important tuning parameters
+MIN_SIZE = 200 # threshold below which identified nuclei regions are considered small and discarded
 
 # Directory containing image stacks
 if len(sys.argv) > 2:
@@ -242,10 +287,15 @@ if len(sys.argv) > 2:
 else:
     raise ValueError("Usage: python your_script.py <input_folder> <output_folder>")
 
+# For debugging purposes
+# input_folder = '/Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/tiff_input/'
+# output_folder = '/Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/output/'
+
 all_data = []
 
 # Loop through each image stack in the folder
 for file_path in os.listdir(input_folder):
+    # file_path = os.listdir(input_folder)[0]
     
     if file_path.endswith(".tif"):  # Adjust file extension if needed
         
@@ -269,9 +319,15 @@ for file_path in os.listdir(input_folder):
         # Subtract mode background from the data channel
         data_channel_bg_subtracted = subtract_mode_background(data_channel)
         
+        # Debugging: show resulting images
+        # plt.imshow(nucleus_channel_filtered); plt.show(); plt.close()
+        # plt.imshow(data_channel_bg_subtracted); plt.show(); plt.close()
+        
         # Segment the nucleus and create cytoplasmic ROI
-        nucleus_mask = segment_nucleus(nucleus_channel_filtered)
+        nucleus_mask = segment_nucleus(nucleus_channel_filtered, min_size=MIN_SIZE)
         cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=5, distance_from_nucleus=2)
+            # plt.imshow(nucleus_mask); plt.show(); plt.close()
+            # plt.imshow(cytoplasm_roi); plt.show(); plt.close()
         
         #Optional visualization
         # Visualize nucleus segmentation and cytoplasmic ring
@@ -284,7 +340,7 @@ for file_path in os.listdir(input_folder):
         visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name)
         
         # Visualize cytoplasmic ring overlay on data channel image
-        visualize_cytoplasmic_ring_overlay(data_channel_bg_subtracted, cytoplasm_roi,image_name)
+        visualize_cytoplasmic_ring_overlay(data_channel_bg_subtracted, cytoplasm_roi, image_name)
         
         ### Determine mean intensities for each cytoplasmic and nuclear region
         
