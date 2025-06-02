@@ -424,10 +424,18 @@ for file_path in os.listdir(input_folder):
 save_all_intensities_to_csv(all_data, output_folder)
 print(f"All results saved to {output_folder}")
 
+
+################################################################################
+
 if False:
+    
+    '''
     # Now make a plot of the two conditions using seaborn
     import seaborn as sns
     import pandas as pd
     df_all_data = pd.DataFrame(all_data, columns=["Filename+CellID", "Condition", "Nucleus/Cytoplasm Ratio", "Nucleus Intensity", "Cytoplasmic Intensity"])
     sns.stripplot(x="Condition", y="Nucleus/Cytoplasm Ratio", data=df_all_data, jitter=True)
     plt.show()
+    '''
+    
+    
