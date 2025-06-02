@@ -29,6 +29,7 @@
 # python Segmentation_script.py /Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/tiff_input/ /Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/output/
 # python Segmentation_script.py /Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/DATA/ /Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/Analysis_20250602/
 
+print("Starting script..")
 
 ######################################################################
 # Load libraries
@@ -57,7 +58,6 @@ try:
 except:
     print('Not running in Google Colab')
     running_in_colab = False
-
 
 ######################################################################
 
