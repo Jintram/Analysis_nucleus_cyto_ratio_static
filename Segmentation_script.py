@@ -99,6 +99,8 @@ def visualize_cytoplasmic_ring(image, cytoplasmic_ring, filename):
 
 # Function to visualize nucleus segmentation with masks and cell IDs
 def visualize_nucleus_with_ids(image, labeled_mask, filename):
+    # image = nucleus_channel_filtered; labeled_mask= nucleus_mask; filename= image_name
+    # np.unique(labeled_mask, return_counts=True)
 
     overlay = label2rgb(labeled_mask, image=image, bg_label=0)
 
@@ -113,6 +115,7 @@ def visualize_nucleus_with_ids(image, labeled_mask, filename):
         plt.text(x, y, str(prop.label), color='red', fontsize=12, ha='center', va='center')
 
     plt.axis("off")
+    # plt.show()
     plt.savefig(os.path.join(output_folder, f"{filename}_Cell_IDs.png"))
     plt.close()  # Close the figure after saving
 
@@ -228,9 +231,13 @@ def segment_nucleus(image, min_size=200):
     clean_mask = remove_small_objects(binary_mask, min_size=min_size)
     clean_mask = remove_small_holes(clean_mask, area_threshold=10)
     opened_mask = binary_opening(clean_mask, footprint=disk(2))
+    # In some cases, additional removal necessary (though these cases are related to artifacts)
+    final_mask = remove_small_objects(opened_mask, min_size=min_size)
     
     # Create labeled mask
-    labeled_mask = label(opened_mask)
+    labeled_mask = label(final_mask)
+    
+    # plt.imshow(labeled_mask); plt.show(); plt.close()
             
     return labeled_mask
 
@@ -344,6 +351,7 @@ all_data = []
 # Loop through each image stack in the folder
 for file_path in os.listdir(input_folder):
     # file_path = os.listdir(input_folder)[0]
+    # file_path = "Stack_hDMECs_mtq-gaq-RQ_NFAT1_007.tif"
     
     if file_path.endswith(".tif"):  # Adjust file extension if needed
         
@@ -415,3 +423,11 @@ for file_path in os.listdir(input_folder):
 # Save all combined data to a single CSV file
 save_all_intensities_to_csv(all_data, output_folder)
 print(f"All results saved to {output_folder}")
+
+if False:
+    # Now make a plot of the two conditions using seaborn
+    import seaborn as sns
+    import pandas as pd
+    df_all_data = pd.DataFrame(all_data, columns=["Filename+CellID", "Condition", "Nucleus/Cytoplasm Ratio", "Nucleus Intensity", "Cytoplasmic Intensity"])
+    sns.stripplot(x="Condition", y="Nucleus/Cytoplasm Ratio", data=df_all_data, jitter=True)
+    plt.show()
