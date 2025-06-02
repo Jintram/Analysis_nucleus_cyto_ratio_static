@@ -21,6 +21,13 @@
 # 
 # The data is exported to .csv for further analysis, e.g. visualization
 # by the 'DataViz.R' script.
+#
+# Technical note:
+# The script can be run from command line like:
+# python Segmentation_script.py <input_folder> <output_folder>
+# E.g. 
+# python Segmentation_script.py /Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/tiff_input/ /Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/output/
+
 
 ######################################################################
 # Load libraries
@@ -127,6 +134,32 @@ def visualize_cytoplasmic_ring_overlay(data_channel, cytoplasmic_ring_labeled, f
     plt.savefig(os.path.join(output_folder, f"{filename}_Cytoplasmic_overlay.png"))
     plt.close()  # Close the figure after saving
 
+# Function to visualize which parts of the image are considered background (<= mode)
+def visualize_background_mode(image, mode_value, filename):
+    # image=data_channel; filename=image_name
+    '''
+    Visualize the background mode value in the image.
+    Pixels with values <= mode_value are considered background.
+    '''
+    
+    plt.figure(figsize=(8, 6))
+    plt.title("Background areas highlighted in yellow\n"+"Background should not overlap with cells")
+    
+    # Create a mask for background pixels
+    background_mask = image <= mode_value
+    
+    # Display the original image
+    plt.imshow(image, cmap="gray")
+    
+    # Overlay the background mask
+    plt.imshow(np.ma.masked_where(background_mask == 0, background_mask), 
+               cmap="viridis", alpha=0.9, vmin=0, vmax=1)
+    
+    plt.axis("off")
+    # plt.show()
+    plt.savefig(os.path.join(output_folder, f"{filename}_Background.png"))
+    plt.close()  # Close the figure after saving
+
 ######################################################################
 
 # Function to subtract mode background from an image
@@ -152,8 +185,8 @@ def subtract_mode_background(image):
 
     #Ensure valid pixel range without clipping to white
     background_subtracted_image[background_subtracted_image < 0] = 0 #Set negative values to 0
-    
-    return background_subtracted_image.astype(np.uint16)
+        
+    return background_subtracted_image.astype(np.uint16), mode_value
 
 # Function to apply median filter to an image
 def apply_median_filter(image, radius=2):
@@ -279,6 +312,9 @@ def extract_condition(filename):
 
 # Some important tuning parameters
 MIN_SIZE = 200 # threshold below which identified nuclei regions are considered small and discarded
+DILATION_RADIUS = 5
+DISTANCE_FROM_NUCLEUS = 2
+PLOT_BACKGROUND_IMG = True
 
 # Directory containing image stacks
 if len(sys.argv) > 2:
@@ -317,7 +353,11 @@ for file_path in os.listdir(input_folder):
         nucleus_channel_filtered = apply_median_filter(nucleus_channel, radius=2)
         
         # Subtract mode background from the data channel
-        data_channel_bg_subtracted = subtract_mode_background(data_channel)
+        data_channel_bg_subtracted, mode_value = subtract_mode_background(data_channel)
+        
+        if PLOT_BACKGROUND_IMG:
+            # Visualize the background mode for the data channel
+            visualize_background_mode(data_channel, mode_value, image_name)
         
         # Debugging: show resulting images
         # plt.imshow(nucleus_channel_filtered); plt.show(); plt.close()
@@ -325,7 +365,7 @@ for file_path in os.listdir(input_folder):
         
         # Segment the nucleus and create cytoplasmic ROI
         nucleus_mask = segment_nucleus(nucleus_channel_filtered, min_size=MIN_SIZE)
-        cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=5, distance_from_nucleus=2)
+        cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=DILATION_RADIUS, distance_from_nucleus= DISTANCE_FROM_NUCLEUS)
             # plt.imshow(nucleus_mask); plt.show(); plt.close()
             # plt.imshow(cytoplasm_roi); plt.show(); plt.close()
         
