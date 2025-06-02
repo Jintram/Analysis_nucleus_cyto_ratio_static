@@ -27,6 +27,7 @@
 # python Segmentation_script.py <input_folder> <output_folder>
 # E.g. 
 # python Segmentation_script.py /Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/tiff_input/ /Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/output/
+# python Segmentation_script.py /Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/DATA/ /Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/Analysis_20250602/
 
 
 ######################################################################
@@ -142,20 +143,22 @@ def visualize_background_mode(image, mode_value, filename):
     Pixels with values <= mode_value are considered background.
     '''
     
-    plt.figure(figsize=(8, 6))
-    plt.title("Background areas highlighted in yellow\n"+"Background should not overlap with cells")
+    fig, ax = plt.subplots(1, 2, figsize=(12, 6))    
+    fig.suptitle("Background areas highlighted in yellow\n"+"Background should not overlap with cells")
     
     # Create a mask for background pixels
     background_mask = image <= mode_value
     
     # Display the original image
-    plt.imshow(image, cmap="gray")
+    ax[0].imshow(image, cmap="gray")
+    ax[1].imshow(image, cmap="gray")
     
     # Overlay the background mask
-    plt.imshow(np.ma.masked_where(background_mask == 0, background_mask), 
+    ax[1].imshow(np.ma.masked_where(background_mask == 0, background_mask), 
                cmap="viridis", alpha=0.9, vmin=0, vmax=1)
     
-    plt.axis("off")
+    ax[0].axis("off"); ax[1].axis("off")
+    plt.tight_layout()
     # plt.show()
     plt.savefig(os.path.join(output_folder, f"{filename}_Background.png"))
     plt.close()  # Close the figure after saving
@@ -164,6 +167,7 @@ def visualize_background_mode(image, mode_value, filename):
 
 # Function to subtract mode background from an image
 def subtract_mode_background(image):
+    # image = data_channel
     '''
     The mode is the most frequently occurring pixel value in the image,
     and it is assumed that there are mostly background pixels in this image,
@@ -172,13 +176,19 @@ def subtract_mode_background(image):
     '''
     #Flatten the image to 1D for mode calculation
     flat_image = image.flatten()
-
+        
     #Convert to integer if needed
     if not np.issubdtype(flat_image.dtype, np.integer):
         flat_image = flat_image.astype(np.uint16)  # Convert to 16-bit if not integer
     
+    # Remove values that equal the maximum int value (as saturated signal migh incorrectly be perceived as mode)
+    max_int_value = np.iinfo(flat_image.dtype).max
+    flat_image = flat_image[flat_image < max_int_value]
+    
     #Compute mode using bincount
     mode_value = stats.mode(flat_image, keepdims=True)[0][0]  # More robust mode calculation
+        # plt.hist(flat_image, bins=100); plt.axvline(mode_value, color='red', linestyle='dashed', linewidth=1)
+        # plt.show(); plt.close()
     
     #Substract mode value
     background_subtracted_image = image.astype(np.int32) - mode_value
@@ -326,6 +336,8 @@ else:
 # For debugging purposes
 # input_folder = '/Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/tiff_input/'
 # output_folder = '/Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/output/'
+# input_folder = '/Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/DATA/'
+# output_folder = '/Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/Analysis_20250602/'
 
 all_data = []
 
@@ -351,9 +363,11 @@ for file_path in os.listdir(input_folder):
         
         # Apply median filter to the nucleus channel, increase radius to increase smoothing
         nucleus_channel_filtered = apply_median_filter(nucleus_channel, radius=2)
+            # plt.imshow(nucleus_channel_filtered); plt.show(); plt.close()
         
         # Subtract mode background from the data channel
         data_channel_bg_subtracted, mode_value = subtract_mode_background(data_channel)
+            # plt.imshow(data_channel_bg_subtracted); plt.show(); plt.close()
         
         if PLOT_BACKGROUND_IMG:
             # Visualize the background mode for the data channel
