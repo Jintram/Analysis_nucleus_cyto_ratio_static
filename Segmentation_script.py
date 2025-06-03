@@ -39,6 +39,7 @@ import csv
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 import tifffile as tiff
 import re  # Import regular expressions module
 
@@ -51,6 +52,9 @@ from skimage.filters import median
 import sys
 from scipy import stats
 
+######################################################################
+
+# Test whether running in colab
 try:
     from google.colab import drive
     print('Running in Google Colab')
@@ -58,6 +62,14 @@ try:
 except:
     print('Not running in Google Colab')
     running_in_colab = False
+
+# Create a shuffled color map of jet, starting with color black  
+jet = plt.get_cmap('jet')
+colors = jet(np.arange(256))
+np.random.shuffle(colors)
+colors[0] = [0, 0, 0, 1]  # Set the first color to black
+mycolormap = ListedColormap(colors)
+
 
 ######################################################################
 
@@ -98,26 +110,55 @@ def visualize_cytoplasmic_ring(image, cytoplasmic_ring, filename):
     plt.close()  # Close the figure after saving
 
 # Function to visualize nucleus segmentation with masks and cell IDs
-def visualize_nucleus_with_ids(image, labeled_mask, filename):
+def visualize_nucleus_with_ids(image, labeled_mask, filename, cytoplasm_roi=None):
     # image = nucleus_channel_filtered; labeled_mask= nucleus_mask; filename= image_name
     # np.unique(labeled_mask, return_counts=True)
 
-    overlay = label2rgb(labeled_mask, image=image, bg_label=0)
-
-    plt.figure(figsize=(12, 6))
-    plt.imshow(overlay)
-    plt.title("Nucleus Segmentation with Cell IDs")
+    # overlay = label2rgb(labeled_mask, image=image, bg_label=0)
     
-    # Add cell IDs to the plot
     properties = regionprops(labeled_mask)
+    
+    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+    plt.suptitle("Nucleus Segmentation with Cell IDs")
+    
+    # Segmentation on top of nuclei
+    ax[0].imshow(image, cmap="gray")
+    ax[0].contour(labeled_mask>0, colors='red', linewidths=0.5)
+    # Add cell IDs to the plot
     for prop in properties:
         y, x = prop.centroid
-        plt.text(x, y, str(prop.label), color='red', fontsize=12, ha='center', va='center')
+        y_top = prop.bbox[0]
+        # x_rightbound = prop.bbox[3]
+        ax[0].text(x, y_top, str(prop.label), color='red', fontsize=12, ha='center', va='bottom')
 
-    plt.axis("off")
-    # plt.show()
+    # plt.show(); plt.close()
+    
+    # Segmentation with IDs
+    ax[1].imshow(labeled_mask, cmap=mycolormap)
+    
+    # Add cell IDs to the plot
+    for prop in properties:
+        y, x = prop.centroid
+        # y_top = prop.bbox[0]
+        # x_rightbound = prop.bbox[3]
+        ax[1].text(x, y, str(prop.label), color='red', fontsize=12, ha='center', va='center')
+    ax[1].axis("off")
+    
+    # Plot cytoplasm_roi if given
+    if cytoplasm_roi is not None:
+        cytoplasm_overlay = np.ma.masked_where(cytoplasm_roi == 0, cytoplasm_roi)        
+        ax[1].imshow(cytoplasm_overlay, cmap=mycolormap, vmin=0, vmax=np.max(cytoplasm_overlay))
+        # Add extra label labeling the cytoplasm regions
+        # properties = regionprops(labeled_mask)
+        # for prop in properties:            
+        #     y, x = prop.bbox[:2] # lefttop
+        #     ax[1].text(x, y, str(prop.label), color='red', fontsize=12, ha='center', va='center')
+
+    
+    # plt.show(); plt.close()
     plt.savefig(os.path.join(output_folder, f"{filename}_Cell_IDs.png"))
     plt.close()  # Close the figure after saving
+
 
 # Function to visualize cytoplasmic ring overlayed on the data channel image
 def visualize_cytoplasmic_ring_overlay(data_channel, cytoplasmic_ring_labeled, filename):
@@ -132,11 +173,14 @@ def visualize_cytoplasmic_ring_overlay(data_channel, cytoplasmic_ring_labeled, f
     # Display data channel with dynamic range
     plt.imshow(data_channel, cmap="gray", vmin=vmin, vmax=vmax)
     # Overlay cytoplasmic ring
+    #plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
+    #          cmap="gray", alpha=0.7)
     plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
-              cmap="gray", alpha=0.7)
+            cmap="OrRd", alpha=0.9, vmin=0, vmax=1)
     plt.axis("off")
     plt.savefig(os.path.join(output_folder, f"{filename}_Cytoplasmic_overlay.png"))
     plt.close()  # Close the figure after saving
+
 
 # Function to visualize which parts of the image are considered background (<= mode)
 def visualize_background_mode(image, mode_value, filename):
@@ -290,8 +334,12 @@ def measure_intensity_per_cell(image, labeled_mask):
     
     # Extract intensities for each cell
     intensities = [prop.mean_intensity for prop in properties]
+    areas       = [prop.area for prop in properties]
+    
+    # Also extract roundness
+    roundness = [np.pi*4*prop.area / prop.perimeter**2 for prop in properties] 
      
-    return intensities
+    return intensities, areas, roundness
 
 # Function to save all intensities and ratios to a single CSV file
 def save_all_intensities_to_csv(data, output_folder):
@@ -311,7 +359,7 @@ def save_all_intensities_to_csv(data, output_folder):
     
     with open(csv_filename, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(["Filename+CellID", "Condition", "Nucleus/Cytoplasm Ratio", "Nucleus Intensity", "Cytoplasmic Intensity"])
+        writer.writerow(["Filename+CellID", "Condition", "Nucleus/Cytoplasm Ratio", "Nucleus Intensity", "Cytoplasmic Intensity","Nucleus area (px)","Cytoplasm ring area (px)","Roundness nucleus"])
         for row in data:
             writer.writerow(row)
 
@@ -328,7 +376,8 @@ def extract_condition(filename):
 ######################################################################
 
 # Some important tuning parameters
-MIN_SIZE = 200 # threshold below which identified nuclei regions are considered small and discarded
+MIN_SIZE = 500 # threshold below which identified nuclei regions are considered small and discarded
+    # this was 200, but the average nucleus seems to have a ±50 px radius; so nuclei with 4x less that diameter can be removed easily --> 12.5^2 * pi = ±500
 DILATION_RADIUS = 5
 DISTANCE_FROM_NUCLEUS = 2
 PLOT_BACKGROUND_IMG = True
@@ -346,7 +395,7 @@ else:
 # input_folder = '/Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/DATA/'
 # output_folder = '/Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/Analysis_20250602/'
 
-all_data = []
+all_data  = []
 
 # Loop through each image stack in the folder
 for file_path in os.listdir(input_folder):
@@ -399,7 +448,7 @@ for file_path in os.listdir(input_folder):
         ### Plotting
         
         # Visualize with cell IDs for choosing interesting cells
-        visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name)
+        visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name, cytoplasm_roi=cytoplasm_roi)
         
         # Visualize cytoplasmic ring overlay on data channel image
         visualize_cytoplasmic_ring_overlay(data_channel_bg_subtracted, cytoplasm_roi, image_name)
@@ -407,8 +456,8 @@ for file_path in os.listdir(input_folder):
         ### Determine mean intensities for each cytoplasmic and nuclear region
         
         # Measure intensities for each cell in the nucleus and cytoplasm
-        nucleus_intensities = measure_intensity_per_cell(data_channel_bg_subtracted, nucleus_mask)
-        cytoplasm_intensities = measure_intensity_per_cell(data_channel_bg_subtracted, cytoplasm_roi)
+        nucleus_intensities, nucleus_areas, nucleus_roundness = measure_intensity_per_cell(data_channel_bg_subtracted, nucleus_mask)
+        cytoplasm_intensities, cytoplasm_areas, _ = measure_intensity_per_cell(data_channel_bg_subtracted, cytoplasm_roi)
         
         ### Create output data structure
         # all_data is a list of lists, where the outer lists corresponds to the cells,
@@ -416,9 +465,10 @@ for file_path in os.listdir(input_folder):
         # all_data contains data from multiple image stacks.
         
         # Combine data for each cell
-        for cell_id, (nucleus_intensity, cytoplasm_intensity) in enumerate(zip(nucleus_intensities, cytoplasm_intensities), start=1):
+        for cell_id, (nucleus_intensity, cytoplasm_intensity, nucleus_area, cytoplasm_area, nucleus_roundness_value) in enumerate(zip(nucleus_intensities, cytoplasm_intensities, nucleus_areas, cytoplasm_areas, nucleus_roundness), start=1):
             ratio = nucleus_intensity / cytoplasm_intensity if cytoplasm_intensity != 0 else np.nan
-            all_data.append([file_path + f"_{cell_id}", condition, ratio, nucleus_intensity, cytoplasm_intensity])
+            all_data.append([file_path + f"_{cell_id}", condition, ratio, nucleus_intensity, cytoplasm_intensity, nucleus_area, cytoplasm_area, nucleus_roundness_value])
+            
 
 # Save all combined data to a single CSV file
 save_all_intensities_to_csv(all_data, output_folder)
