@@ -36,6 +36,7 @@ print("Starting script..")
 
 import os
 import csv
+import glob
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -119,7 +120,7 @@ def visualize_nucleus_with_ids(image, labeled_mask, filename, cytoplasm_roi=None
     properties = regionprops(labeled_mask)
     
     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-    plt.suptitle("Nucleus Segmentation with Cell IDs")
+    plt.suptitle("Nucleus Segmentation with Cell IDs\n")
     
     # Segmentation on top of nuclei
     ax[0].imshow(image, cmap="gray")
@@ -153,42 +154,66 @@ def visualize_nucleus_with_ids(image, labeled_mask, filename, cytoplasm_roi=None
         # for prop in properties:            
         #     y, x = prop.bbox[:2] # lefttop
         #     ax[1].text(x, y, str(prop.label), color='red', fontsize=12, ha='center', va='center')
-
     
+    plt.tight_layout()
     # plt.show(); plt.close()
-    plt.savefig(os.path.join(output_folder, f"{filename}_Cell_IDs.png"))
+    plt.savefig(os.path.join(output_folder, f"{filename}_Cell_IDs.pdf"), bbox_inches='tight')
     plt.close()  # Close the figure after saving
 
 
 # Function to visualize cytoplasmic ring overlayed on the data channel image
 def visualize_cytoplasmic_ring_overlay(data_channel, cytoplasmic_ring_labeled, filename):
+    # data_channel=data_channel_bg_subtracted; cytoplasmic_ring_labeled=cytoplasm_roi; filename=image_name
     
     cytoplasmic_ring = cytoplasmic_ring_labeled>0
     
     # Calculate dynamic range from the data channel
     vmin, vmax = np.percentile(data_channel[data_channel > 0], (1, 99))
     
-    plt.figure(figsize=(12, 6))
-    plt.title("Cytoplasmic Ring Overlay on data Channel")
+    fig, axs = plt.subplots(1, 2,  figsize=(12, 6))
+    plt.suptitle("Cytoplasmic Ring Overlay on data Channel")
+    
     # Display data channel with dynamic range
-    plt.imshow(data_channel, cmap="gray", vmin=vmin, vmax=vmax)
+    axs[0].imshow(data_channel, cmap="gray", vmin=vmin, vmax=vmax)
     # Overlay cytoplasmic ring
     #plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
     #          cmap="gray", alpha=0.7)
-    plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
+    axs[0].imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
             cmap="OrRd", alpha=0.9, vmin=0, vmax=1)
     plt.axis("off")
-    plt.savefig(os.path.join(output_folder, f"{filename}_Cytoplasmic_overlay.png"))
+    
+    # Same, but now with labels added
+    axs[1].imshow(data_channel, cmap="gray", vmin=vmin, vmax=vmax)
+    # Overlay cytoplasmic ring
+    #plt.imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
+    #          cmap="gray", alpha=0.7)
+    axs[1].imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
+            cmap="OrRd", alpha=0.9, vmin=0, vmax=1)
+    # Add the labels
+    properties = regionprops(cytoplasmic_ring_labeled)
+    for prop in properties:
+        y, x = prop.centroid
+        y_top = prop.bbox[0]
+        # x_rightbound = prop.bbox[3]
+        axs[1].text(x, y_top, str(prop.label), color='red', fontsize=12, ha='center', va='bottom')
+    plt.axis("off")
+    
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig(os.path.join(output_folder, f"{filename}_Cytoplasmic_overlay.pdf"), bbox_inches='tight')
     plt.close()  # Close the figure after saving
 
 
 # Function to visualize which parts of the image are considered background (<= mode)
-def visualize_background_mode(image, mode_value, filename):
+def visualize_background_mode(image, mode_value, filename, cytoplasmic_ring_labeled=None):
     # image=data_channel; filename=image_name
     '''
     Visualize the background mode value in the image.
     Pixels with values <= mode_value are considered background.
     '''
+    
+    # Calculate dynamic range from the data channel
+    vmin, vmax = np.percentile(image[image > 0], (1, 99))
     
     fig, ax = plt.subplots(1, 2, figsize=(12, 6))    
     fig.suptitle("Background areas highlighted in yellow\n"+"Background should not overlap with cells")
@@ -197,17 +222,31 @@ def visualize_background_mode(image, mode_value, filename):
     background_mask = image <= mode_value
     
     # Display the original image
-    ax[0].imshow(image, cmap="gray")
-    ax[1].imshow(image, cmap="gray")
+    ax[0].imshow(image, cmap="gray", vmin=vmin, vmax=vmax)
+    ax[1].imshow(image, cmap="gray", vmin=vmin, vmax=vmax)
     
     # Overlay the background mask
     ax[1].imshow(np.ma.masked_where(background_mask == 0, background_mask), 
                cmap="viridis", alpha=0.9, vmin=0, vmax=1)
     
-    ax[0].axis("off"); ax[1].axis("off")
+    # Now add the cytoplasmic rings if given
+    if cytoplasmic_ring_labeled is not None:
+        cytoplasmic_ring = cytoplasmic_ring_labeled > 0
+        ax[1].imshow(np.ma.masked_where(cytoplasmic_ring == 0, cytoplasmic_ring), 
+                     cmap="OrRd", alpha=0.9, vmin=0, vmax=1)
+        # Add the labels
+        properties = regionprops(cytoplasmic_ring_labeled)
+        for prop in properties:
+            y, x = prop.centroid
+            y_top = prop.bbox[0]
+            # ax[1].text(x, y_top, str(prop.label), color='white', fontsize=13, ha='center', va='bottom')
+            ax[1].text(x, y_top, str(prop.label), color='red', fontsize=12, ha='center', va='bottom')
+    
+    ax[0].axis("off"); 
+    # ax[1].axis("off")
     plt.tight_layout()
     # plt.show()
-    plt.savefig(os.path.join(output_folder, f"{filename}_Background.png"))
+    plt.savefig(os.path.join(output_folder, f"{filename}_Background.pdf"), bbox_inches='tight')
     plt.close()  # Close the figure after saving
 
 ######################################################################
@@ -333,13 +372,14 @@ def measure_intensity_per_cell(image, labeled_mask):
     properties = regionprops(labeled_mask, intensity_image=image)
     
     # Extract intensities for each cell
-    intensities = [prop.mean_intensity for prop in properties]
-    areas       = [prop.area for prop in properties]
+    intensities        = [prop.mean_intensity for prop in properties]
+    intensities_median = [np.median(image[prop.coords[:, 0], prop.coords[:, 1]]) for prop in properties]
+    areas              = [prop.area for prop in properties]
     
     # Also extract roundness
     roundness = [np.pi*4*prop.area / prop.perimeter**2 for prop in properties] 
      
-    return intensities, areas, roundness
+    return intensities, intensities_median, areas, roundness
 
 # Function to save all intensities and ratios to a single CSV file
 def save_all_intensities_to_csv(data, output_folder):
@@ -359,7 +399,7 @@ def save_all_intensities_to_csv(data, output_folder):
     
     with open(csv_filename, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(["Filename+CellID", "Condition", "Nucleus/Cytoplasm Ratio", "Nucleus Intensity", "Cytoplasmic Intensity","Nucleus area (px)","Cytoplasm ring area (px)","Roundness nucleus"])
+        writer.writerow(["Filename+CellID", "Condition", "Nucleus/Cytoplasm Ratio", "Nucleus/Cytoplasm Ratio medians", "Nucleus Intensity",  "Nucleus Intensity (median)", "Cytoplasmic Intensity","Cytoplasmic Intensity (median)", "Nucleus area (px)","Cytoplasm ring area (px)","Roundness nucleus"])
         for row in data:
             writer.writerow(row)
 
@@ -394,81 +434,90 @@ else:
 # output_folder = '/Users/m.wehrens/Data_UVA/2024_10_Sebastian-KTR/static-example/output/'
 # input_folder = '/Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/DATA/'
 # output_folder = '/Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/Analysis_20250602/'
+# Test run of data analysis
+# input_folder = '/Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/DATA_ALL/NFAT_analysis_Martijn/NFAT1/2.NFAT1_shDSCR1'
+# output_folder = '/Users/m.wehrens/Data_UVA/202506_Huveneers_Gaq_translocation/ANALYSIS_ALL_20250604/NFAT_analysis_Martijn/NFAT1/2.NFAT1_shDSCR1'
+
+# create output folder
+os.makedirs(output_folder, exist_ok=True)
 
 all_data  = []
 
+# identify the tif files in the input folder, recursively
+tif_filepaths = glob.glob(os.path.join(input_folder, "**/*.tif"), recursive=True)
+# file basename
+tif_filenames = [os.path.basename(file_path) for file_path in tif_filepaths] 
+
 # Loop through each image stack in the folder
-for file_path in os.listdir(input_folder):
-    # file_path = os.listdir(input_folder)[0]
-    # file_path = "Stack_hDMECs_mtq-gaq-RQ_NFAT1_007.tif"
+for file_path, filename in zip(tif_filepaths, tif_filenames):
+    # file_path = tif_filepaths[0]; filename = tif_filenames[0]
     
-    if file_path.endswith(".tif"):  # Adjust file extension if needed
-        
-        #Read image stack
-        image_stack = tiff.imread(os.path.join(input_folder, file_path))
-        print(f"Processing file: {file_path}")
-        
-        ### Image processing
-        
-        image_name = os.path.splitext(file_path)[0]
-        # Extract the condition from the filename
-        condition = extract_condition(file_path)
-        
-        # Put the nucleus and data channels in two seperate variables
-        nucleus_channel = (image_stack[0])  # Assuming the first image is the nucleus channel
-        data_channel = (image_stack[1])  # Assuming the second image is the data channel
-        
-        # Apply median filter to the nucleus channel, increase radius to increase smoothing
-        nucleus_channel_filtered = apply_median_filter(nucleus_channel, radius=2)
-            # plt.imshow(nucleus_channel_filtered); plt.show(); plt.close()
-        
-        # Subtract mode background from the data channel
-        data_channel_bg_subtracted, mode_value = subtract_mode_background(data_channel)
-            # plt.imshow(data_channel_bg_subtracted); plt.show(); plt.close()
-        
-        if PLOT_BACKGROUND_IMG:
-            # Visualize the background mode for the data channel
-            visualize_background_mode(data_channel, mode_value, image_name)
-        
-        # Debugging: show resulting images
+    #Read image stack
+    image_stack = tiff.imread(file_path)
+    print(f"Processing file: {filename}")
+    
+    ### Image processing
+    
+    image_name = os.path.splitext(filename)[0]
+    # Extract the condition from the filename
+    condition = extract_condition(filename)
+    
+    # Put the nucleus and data channels in two seperate variables
+    nucleus_channel = (image_stack[0])  # Assuming the first image is the nucleus channel
+    data_channel = (image_stack[1])  # Assuming the second image is the data channel
+    
+    # Apply median filter to the nucleus channel, increase radius to increase smoothing
+    nucleus_channel_filtered = apply_median_filter(nucleus_channel, radius=2)
         # plt.imshow(nucleus_channel_filtered); plt.show(); plt.close()
+    
+    # Subtract mode background from the data channel
+    data_channel_bg_subtracted, mode_value = subtract_mode_background(data_channel)
         # plt.imshow(data_channel_bg_subtracted); plt.show(); plt.close()
+    
+    # Debugging: show resulting images
+    # plt.imshow(nucleus_channel_filtered); plt.show(); plt.close()
+    # plt.imshow(data_channel_bg_subtracted); plt.show(); plt.close()
+    
+    # Segment the nucleus and create cytoplasmic ROI
+    nucleus_mask = segment_nucleus(nucleus_channel_filtered, min_size=MIN_SIZE)
+    cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=DILATION_RADIUS, distance_from_nucleus= DISTANCE_FROM_NUCLEUS)
+        # plt.imshow(nucleus_mask); plt.show(); plt.close()
+        # plt.imshow(cytoplasm_roi); plt.show(); plt.close()
+    
+    if PLOT_BACKGROUND_IMG:
+        # Visualize the background mode for the data channel
+        visualize_background_mode(data_channel, mode_value, image_name, cytoplasm_roi)
+    
+    #Optional visualization
+    # Visualize nucleus segmentation and cytoplasmic ring
+    # visualize_nucleus_segmentation(nucleus_channel_filtered, nucleus_mask,image_name)
+    # visualize_cytoplasmic_ring(nucleus_channel_filtered, cytoplasm_roi,image_name)
+    
+    ### Plotting
+    
+    # Visualize with cell IDs for choosing interesting cells
+    visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name, cytoplasm_roi=cytoplasm_roi)
+    
+    # Visualize cytoplasmic ring overlay on data channel image
+    visualize_cytoplasmic_ring_overlay(data_channel_bg_subtracted, cytoplasm_roi, image_name)
+    
+    ### Determine mean intensities for each cytoplasmic and nuclear region
+    
+    # Measure intensities for each cell in the nucleus and cytoplasm
+    nucleus_intensities, nucleus_intensities_median, nucleus_areas, nucleus_roundness = measure_intensity_per_cell(data_channel_bg_subtracted, nucleus_mask)
+    cytoplasm_intensities, cytoplasm_intensities_median, cytoplasm_areas, _ = measure_intensity_per_cell(data_channel_bg_subtracted, cytoplasm_roi)
+    
+    ### Create output data structure
+    # all_data is a list of lists, where the outer lists corresponds to the cells,
+    # and the inner lists contains multiple entries with properties and information.
+    # all_data contains data from multiple image stacks.
+    
+    # Combine data for each cell
+    for cell_id, (nucleus_intensity, nucleus_intensity_median, cytoplasm_intensity, cytoplasm_intensity_median, nucleus_area, cytoplasm_area, nucleus_roundness_value) in enumerate(zip(nucleus_intensities, nucleus_intensities_median, cytoplasm_intensities, cytoplasm_intensities_median, nucleus_areas, cytoplasm_areas, nucleus_roundness), start=1):
+        ratio = nucleus_intensity / cytoplasm_intensity if cytoplasm_intensity != 0 else np.nan
+        ratio_median = nucleus_intensity_median / cytoplasm_intensity_median if cytoplasm_intensity_median != 0 else np.nan
+        all_data.append([filename + f"_{cell_id}", condition, ratio, ratio_median, nucleus_intensity, nucleus_intensity_median, cytoplasm_intensity, cytoplasm_intensity_median, nucleus_area, cytoplasm_area, nucleus_roundness_value])
         
-        # Segment the nucleus and create cytoplasmic ROI
-        nucleus_mask = segment_nucleus(nucleus_channel_filtered, min_size=MIN_SIZE)
-        cytoplasm_roi = create_cytoplasm_roi(nucleus_mask, dilation_radius=DILATION_RADIUS, distance_from_nucleus= DISTANCE_FROM_NUCLEUS)
-            # plt.imshow(nucleus_mask); plt.show(); plt.close()
-            # plt.imshow(cytoplasm_roi); plt.show(); plt.close()
-        
-        #Optional visualization
-        # Visualize nucleus segmentation and cytoplasmic ring
-        # visualize_nucleus_segmentation(nucleus_channel_filtered, nucleus_mask,image_name)
-        # visualize_cytoplasmic_ring(nucleus_channel_filtered, cytoplasm_roi,image_name)
-        
-        ### Plotting
-        
-        # Visualize with cell IDs for choosing interesting cells
-        visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name, cytoplasm_roi=cytoplasm_roi)
-        
-        # Visualize cytoplasmic ring overlay on data channel image
-        visualize_cytoplasmic_ring_overlay(data_channel_bg_subtracted, cytoplasm_roi, image_name)
-        
-        ### Determine mean intensities for each cytoplasmic and nuclear region
-        
-        # Measure intensities for each cell in the nucleus and cytoplasm
-        nucleus_intensities, nucleus_areas, nucleus_roundness = measure_intensity_per_cell(data_channel_bg_subtracted, nucleus_mask)
-        cytoplasm_intensities, cytoplasm_areas, _ = measure_intensity_per_cell(data_channel_bg_subtracted, cytoplasm_roi)
-        
-        ### Create output data structure
-        # all_data is a list of lists, where the outer lists corresponds to the cells,
-        # and the inner lists contains multiple entries with properties and information.
-        # all_data contains data from multiple image stacks.
-        
-        # Combine data for each cell
-        for cell_id, (nucleus_intensity, cytoplasm_intensity, nucleus_area, cytoplasm_area, nucleus_roundness_value) in enumerate(zip(nucleus_intensities, cytoplasm_intensities, nucleus_areas, cytoplasm_areas, nucleus_roundness), start=1):
-            ratio = nucleus_intensity / cytoplasm_intensity if cytoplasm_intensity != 0 else np.nan
-            all_data.append([file_path + f"_{cell_id}", condition, ratio, nucleus_intensity, cytoplasm_intensity, nucleus_area, cytoplasm_area, nucleus_roundness_value])
-            
 
 # Save all combined data to a single CSV file
 save_all_intensities_to_csv(all_data, output_folder)
