@@ -111,7 +111,7 @@ def visualize_cytoplasmic_ring(image, cytoplasmic_ring, filename):
     plt.close()  # Close the figure after saving
 
 # Function to visualize nucleus segmentation with masks and cell IDs
-def visualize_nucleus_with_ids(image, labeled_mask, filename, cytoplasm_roi=None):
+def visualize_nucleus_with_ids(image, labeled_mask, filename, cytoplasm_roi=None, logscale=False):
     # image = nucleus_channel_filtered; labeled_mask= nucleus_mask; filename= image_name
     # np.unique(labeled_mask, return_counts=True)
 
@@ -123,7 +123,12 @@ def visualize_nucleus_with_ids(image, labeled_mask, filename, cytoplasm_roi=None
     plt.suptitle("Nucleus Segmentation with Cell IDs\n")
     
     # Segmentation on top of nuclei
-    ax[0].imshow(image, cmap="gray")
+    if (logscale):
+        log_str = '_log'
+        ax[0].imshow(np.log1p(image), cmap="gray")
+    else:
+        log_str = ''
+        ax[0].imshow(image, cmap="gray")
     ax[0].contour(labeled_mask>0, colors='red', linewidths=0.5)
     # Add cell IDs to the plot
     for prop in properties:
@@ -157,7 +162,7 @@ def visualize_nucleus_with_ids(image, labeled_mask, filename, cytoplasm_roi=None
     
     plt.tight_layout()
     # plt.show(); plt.close()
-    plt.savefig(os.path.join(output_folder, f"{filename}_Cell_IDs.pdf"), bbox_inches='tight')
+    plt.savefig(os.path.join(output_folder, f"{filename}_Cell_IDs{log_str}.pdf"), bbox_inches='tight')
     plt.close()  # Close the figure after saving
 
 
@@ -497,6 +502,7 @@ for file_path, filename in zip(tif_filepaths, tif_filenames):
     
     # Visualize with cell IDs for choosing interesting cells
     visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name, cytoplasm_roi=cytoplasm_roi)
+    # visualize_nucleus_with_ids(nucleus_channel_filtered, nucleus_mask, image_name, cytoplasm_roi=cytoplasm_roi, logscale=True)
     
     # Visualize cytoplasmic ring overlay on data channel image
     visualize_cytoplasmic_ring_overlay(data_channel_bg_subtracted, cytoplasm_roi, image_name)
