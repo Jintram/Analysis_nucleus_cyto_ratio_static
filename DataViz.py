@@ -93,6 +93,7 @@ plt.show(); plt.close()
 df_alldata_kept = df_alldata.loc[df_alldata['Discard']!='yes',]
 df_alldata_discarded = df_alldata.loc[df_alldata['Discard']=='yes',]
 
+# Version 1
 
 fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 8*cm_to_inch))
 # Plot 1, showing which outliers are removed
